@@ -1,0 +1,118 @@
+﻿@page "/"
+@inject HttpClient client
+@using System.Text.Json.Serialization;
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Home</PageTitle>
+
+<p class="text-danger">@errorMessage</p>
+
+<h1>Tarefas</h1>
+<hr/>
+
+@if(tarefas == null)
+{
+    <p>Carregando...</p>
+}
+else if(!tarefas.Any())
+{
+    <p>Não existe nenhuma tarefa!</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+
+                <th>Descrição</th>
+                <th>Concluida</th>
+                <th>Data de Criação</th>
+                <th>Data de conclusão</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var item in tarefas)
+            {
+                <tr>
+                    <td>@item.Descricao</td>
+                    <td><input type="checkbox" @bind=item.Concluida/>@(item.Concluida ? "Sim" : "Não")</td>
+                    <td>@item.DataCriacao.ToString("dd/MM/yyyy")</td>
+                    <td>@item.DataConclusao.ToString("dd/MM/yyyy")</td>
+                    <td><button @onclick= "@(() => RemoveTarefa(item.ID))">Apagar tarefa</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>   
+}
+
+@if(tarefas != null)
+{
+    <div class="form-groupd">
+        <label>Tarefa</label>
+        <input type="Text" placeholder="Informe a tarefa" @bind=novaTarefa />
+        <label>Data de conclusão</label>
+        <input type="date" @bind=dataConclusao />
+        <button class="btn btn-primary" @onclick="AdicionarNovaTarefa" >Registrar Tarefa</button>
+    </div>
+}
+
+@code{
+
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            tarefas = await client.GetFromJsonAsync<List<Tarefa>>("dados/tarefas.json");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao carregar os dados: {ex.Message}";
+        }
+    }
+    public class Tarefa
+    {
+        [JsonPropertyName("id")]
+        public Guid ID { get; set; }
+
+        [JsonPropertyName("descricao")]
+        public string Descricao { get; set; }
+
+        [JsonPropertyName("concluida")]
+        public bool Concluida { get; set; }
+
+        [JsonPropertyName("datacriacao")]
+        public DateTime DataCriacao { get; set; }
+
+        [JsonPropertyName("dataconclusao")]
+        public DateTime DataConclusao { get; set; }
+    }
+
+    private DateTime? dataConclusao;
+    private string novaTarefa = "";
+
+    private List<Tarefa> tarefas = new List<Tarefa>();
+
+    private void AdicionarNovaTarefa()
+    {
+        if (!string.IsNullOrWhiteSpace(novaTarefa))
+        {
+            tarefas.Add(new Tarefa
+                {
+                    ID = Guid.NewGuid(),
+                    Descricao = novaTarefa,
+                    DataCriacao = DateTime.Now,
+                    DataConclusao = dataConclusao.Value
+                });
+            novaTarefa = "";
+            dataConclusao = null;
+        }        
+    }
+
+    private void RemoveTarefa(Guid id)
+    {
+        tarefas.Remove(tarefas.First(x => x.ID == id));
+    }
+}
